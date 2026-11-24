@@ -33,5 +33,8 @@ public class MainActivity extends Activity {
             startForegroundService(new Intent(this,RecorderService.class).setAction("show")); finish();
         }); layout.addView(open);
         setContentView(layout);
+        if(getIntent().getBooleanExtra("from_module",false) && Settings.canDrawOverlays(this) && getSystemService(android.app.NotificationManager.class).areNotificationsEnabled()){
+            startForegroundService(new Intent(this,RecorderService.class).setAction("show")); finish();
+        }
     }
 }
