@@ -75,7 +75,7 @@ public class RecorderService extends Service {
     }
     void hide(){if(bar!=null){try{wm.removeView(bar);}catch(RuntimeException ignored){}bar=null;}}
     String root(String command)throws Exception{
-        if(!Pattern.matches("status|start performance|stop",command))throw new IllegalArgumentException();
+        if(!Pattern.matches("status|start native|stop",command))throw new IllegalArgumentException();
         Process p=new ProcessBuilder("su","-c","/system/bin/sh "+SCRIPT+" "+command).redirectErrorStream(true).start();
         ByteArrayOutputStream out=new ByteArrayOutputStream();
         try(InputStream in=p.getInputStream()){byte[] b=new byte[1024];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}
@@ -89,7 +89,7 @@ public class RecorderService extends Service {
             final String r=result; main.post(()->{if(closed)return;busy=false;callback.done(r);refresh();});});
     }
     void status(){run(()->root("status"),s->{
-        if(s.equals("Recording")){accessible=true;known=true;recording=true;if(!stopping){paused=false;message="Recording · 60s max";}}
+        if(s.equals("Recording")){accessible=true;known=true;recording=true;if(!stopping){paused=false;message="Recording · native quality";}}
         else if(s.equals("Finalizing")){accessible=true;known=true;message="Finalizing clip…";}
         else if(s.equals("Idle")){accessible=true;known=true;recording=false;if(stopping){stopping=false;if(!paused){message="Ended";finishController();return;}}message=paused?"Paused · clip saved":"Ready";}
         else{accessible=false;known=false;message="Root/module unavailable"; }
@@ -99,7 +99,7 @@ public class RecorderService extends Service {
         NotificationManager nm=getSystemService(NotificationManager.class);
         if(!nm.areNotificationsEnabled()||nm.getNotificationChannel(CHANNEL).getImportance()==NotificationManager.IMPORTANCE_NONE){message="Enable notifications first";refresh();return;}
         message="Starting…";
-        run(()->root("start performance"),s->{if(s.startsWith("ERROR")||!s.contains("Recording requested")){message="Start failed: "+s;return;}paused=false;recording=true;message="Recording · 60s max";});
+        run(()->root("start native"),s->{if(s.startsWith("ERROR")||!s.contains("Recording requested")){message="Start failed: "+s;return;}paused=false;recording=true;message="Recording · native quality";});
     }
     void pause(){
         if(!recording||stopping)return;
