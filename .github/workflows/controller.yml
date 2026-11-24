@@ -43,13 +43,13 @@ jobs:
           javac --release 8 -encoding UTF-8 -classpath "$JAR" -d "$OUT/classes" @"$OUT/sources.txt"
           jar cf "$OUT/classes.jar" -C "$OUT/classes" .
           "$BT/d8" --min-api 26 --lib "$JAR" --output "$OUT/dex" "$OUT/classes.jar"
-          "$BT/aapt2" link -I "$JAR" --manifest "$SRC/AndroidManifest.xml" --min-sdk-version 26 --target-sdk-version 34 --version-code 9 --version-name 0.9-beta --rename-manifest-package org.lockrec.controller -o "$OUT/unsigned.apk"
+          "$BT/aapt2" link -I "$JAR" --manifest "$SRC/AndroidManifest.xml" --min-sdk-version 26 --target-sdk-version 34 --version-code 10 --version-name 1.0-beta --rename-manifest-package org.lockrec.controller -o "$OUT/unsigned.apk"
           (cd "$OUT/dex" && zip -q -j "$OUT/unsigned.apk" classes*.dex)
           "$BT/zipalign" -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
           keytool -genkeypair -keystore "$OUT/debug.keystore" -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          "$BT/apksigner" sign --ks "$OUT/debug.keystore" --ks-pass pass:android --key-pass pass:android --out LockRec-v0.9-beta.apk "$OUT/aligned.apk"
-          "$BT/apksigner" verify --verbose LockRec-v0.9-beta.apk
-          "$BT/aapt" dump badging LockRec-v0.9-beta.apk | sed -n '1,12p'
+          "$BT/apksigner" sign --ks "$OUT/debug.keystore" --ks-pass pass:android --key-pass pass:android --out LockRec-v1.0-beta.apk "$OUT/aligned.apk"
+          "$BT/apksigner" verify --verbose LockRec-v1.0-beta.apk
+          "$BT/aapt" dump badging LockRec-v1.0-beta.apk | sed -n '1,12p'
       - name: Package matching root module
         run: |
           set -e
@@ -59,16 +59,16 @@ jobs:
           unzip -t LockRec-Universal-v0.8-beta.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: LockRec-v0.9-beta
+          name: LockRec-v1.0-beta
           path: |
-            LockRec-v0.9-beta.apk
+            LockRec-v1.0-beta.apk
             LockRec-Universal-v0.8-beta.zip
       - name: Publish verified APK as prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v0.9-beta >/dev/null 2>&1; then
-            gh release upload v0.9-beta LockRec-v0.9-beta.apk LockRec-Universal-v0.8-beta.zip --clobber
+          if gh release view v1.0-beta >/dev/null 2>&1; then
+            gh release upload v1.0-beta LockRec-v1.0-beta.apk LockRec-Universal-v0.8-beta.zip --clobber
           else
-            gh release create v0.9-beta LockRec-v0.9-beta.apk LockRec-Universal-v0.8-beta.zip --target "$GITHUB_SHA" --prerelease --title "LockRec Night Edition v0.9 Beta" --notes "Experimental debug-signed APK. Root mode needs module v0.8. Animated mascot, compact controller and optional pre-recording toolbar hide. Selectable resolution and conditional FPS controls. Actual FPS varies. Pause creates separate clips. Hardware testing pending."
+            gh release create v1.0-beta LockRec-v1.0-beta.apk LockRec-Universal-v0.8-beta.zip --target "$GITHUB_SHA" --prerelease --title "LockRec Lunar Edition v1.0 Beta" --notes "Experimental debug-signed APK. Root mode needs module v0.8. Full-screen anime scene and state-driven single morphing button. Optional toolbar hide. Selectable resolution and conditional FPS controls. Actual FPS varies. Pause creates separate clips. Hardware testing pending."
           fi
