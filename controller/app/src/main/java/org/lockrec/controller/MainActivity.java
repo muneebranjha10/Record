@@ -25,7 +25,7 @@ public class MainActivity extends Activity {
     TextView captureStatus;
     String currentState="checking";
     boolean probing=false, resumed=false;
-    long waitUntil=0;
+    long waitUntil=0, lastProbe=0;
     final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
     final Runnable observer=new Runnable(){public void run(){if(!resumed)return;syncState();handler.postDelayed(this,350);}};
     int dp(int n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
@@ -69,11 +69,11 @@ public class MainActivity extends Activity {
             if(android.os.SystemClock.elapsedRealtime()<waitUntil&&(s.equals("idle")||s.equals("checking")))return;
             applyState(s,RecorderService.uiMessage);
         }else if(android.os.SystemClock.elapsedRealtime()>=waitUntil && !probing){
-            if(!currentState.equals("idle")&&!currentState.equals("error"))probe();
+            if(android.os.SystemClock.elapsedRealtime()-lastProbe>=2500)probe();
         }
     }
     void probe(){
-        if(probing)return;probing=true;
+        if(probing)return;probing=true;lastProbe=android.os.SystemClock.elapsedRealtime();
         new Thread(()->{
             String value="error";
             try{
