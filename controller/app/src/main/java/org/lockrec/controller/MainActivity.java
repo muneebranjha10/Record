@@ -90,6 +90,42 @@ public class MainActivity extends Activity {
     @Override protected void onResume(){super.onResume();resumed=true;if(!RecorderService.servicePresent)probe();handler.removeCallbacks(observer);handler.post(observer);}
     @Override protected void onPause(){resumed=false;handler.removeCallbacks(observer);if(scene!=null)scene.setMotionEnabled(false);super.onPause();}
     @Override protected void onDestroy(){handler.removeCallbacks(observer);super.onDestroy();}
+    void openChannel(){
+        try{
+            startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://t.me/s23_hype")));
+        }catch(android.content.ActivityNotFoundException e){
+            android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+            if(clipboard!=null){clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Telegram channel","https://t.me/s23_hype"));Toast.makeText(this,"Channel link copied",Toast.LENGTH_LONG).show();}
+        }
+    }
+    void showChannelPopup(){
+        if(isFinishing()||isDestroyed()||getPreferences(0).getBoolean("channel_prompt_seen",false))return;
+        android.app.Dialog dialog=new android.app.Dialog(this);
+        LinearLayout card=new LinearLayout(this);card.setOrientation(1);card.setGravity(Gravity.CENTER_HORIZONTAL);card.setPadding(dp(22),dp(24),dp(22),dp(18));
+        GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{0xff352044,0xff172b49});
+        bg.setCornerRadius(dp(28));bg.setStroke(dp(1),0xffac9de8);card.setBackground(bg);
+        android.view.View telegram=new android.view.View(this){
+            final android.graphics.Paint p=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            @Override protected void onDraw(android.graphics.Canvas canvas){
+                super.onDraw(canvas);canvas.save();canvas.scale(getWidth()/80f,getHeight()/80f);
+                p.setShader(new android.graphics.LinearGradient(0,0,80,80,0xff64dfff,0xff168ad3,android.graphics.Shader.TileMode.CLAMP));canvas.drawCircle(40,40,38,p);p.setShader(null);
+                android.graphics.Path plane=new android.graphics.Path();plane.moveTo(15,37);plane.lineTo(62,19);plane.quadTo(66,18,65,23);plane.lineTo(56,61);plane.quadTo(55,65,51,62);plane.lineTo(38,51);plane.lineTo(30,58);plane.lineTo(31,44);plane.lineTo(15,40);plane.quadTo(12,39,15,37);plane.close();p.setColor(0xffffffff);canvas.drawPath(plane,p);
+                android.graphics.Path fold=new android.graphics.Path();fold.moveTo(31,44);fold.lineTo(58,26);fold.lineTo(38,51);fold.lineTo(30,58);fold.close();p.setColor(0xffbce4f6);canvas.drawPath(fold,p);canvas.restore();
+            }
+        };telegram.setContentDescription("Telegram");
+        card.addView(telegram,new LinearLayout.LayoutParams(dp(76),dp(76)));
+        add(card,label("Join our Telegram",24,WHITE),16);
+        add(card,label("@s23_hype",15,BLUE),6);
+        add(card,label("Get new releases and updates and share your feedback with the community",14,MUTED),12);
+        add(card,button("Join Channel",0xff80d8ff,0xff14223c,()->{dialog.dismiss();openChannel();}),20);
+        add(card,button("Maybe later",0xff322843,WHITE,dialog::dismiss),8);
+        dialog.setContentView(card);dialog.setCancelable(true);dialog.setCanceledOnTouchOutside(true);
+        dialog.setOnDismissListener(x->getPreferences(0).edit().putBoolean("channel_prompt_seen",true).apply());
+        dialog.show();
+        android.view.Window window=dialog.getWindow();
+        if(window!=null){window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));window.setLayout(Math.min(getResources().getDisplayMetrics().widthPixels-dp(32),dp(370)),-2);}
+        card.setAlpha(0);card.setScaleX(.92f);card.setScaleY(.92f);card.animate().alpha(1).scaleX(1).scaleY(1).setDuration(260).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+    }
     Spinner spinner(String[] values){
         Spinner s=new Spinner(this);
         ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,values);
@@ -170,6 +206,8 @@ public class MainActivity extends Activity {
         }),16);
         add(root,label("Stop or pause from the recording notification. A visible floating toolbar may appear in videos. Videos: Movies/LockRec.",12,MUTED),14);
         add(root,label("Requires root + LockRec module v0.8. AOD depends on device.",12,MUTED),8);
+        add(root,button("Telegram  ·  @s23_hype",0xd2362450,BLUE,this::openChannel),14);
         setContentView(layers);
+        if(b==null)handler.post(()->{if(!RecorderService.servicePresent)showChannelPopup();});
     }
 }
