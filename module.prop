@@ -1,6 +1,6 @@
 id=lockrec_universal
 name=LockRec Universal
-version=0.2-beta
-versionCode=2
+version=0.3-beta
+versionCode=3
 author=Record Project
 description=Manual lock screen animation recording. Performance profile, 60 second limit, visible notification. AOD experimental.
