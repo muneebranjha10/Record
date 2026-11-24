@@ -17,7 +17,7 @@ public class MainActivity extends Activity {
         layout.setOrientation(LinearLayout.VERTICAL); layout.setPadding(40,80,40,40);
         layout.setGravity(Gravity.CENTER_VERTICAL);
         TextView title=new TextView(this); title.setText("LockRec Controller"); title.setTextSize(26); layout.addView(title);
-        TextView info=new TextView(this); info.setText("Floating controls for your own recordings. Allow overlay and notifications, then open the toolbar. Grant root when prompted. Pause saves the current clip; Resume creates a new clip. Recordings remain limited to 60 seconds per clip."); layout.addView(info);
+        TextView info=new TextView(this); info.setText("Floating controls for your own recordings. Allow overlay and notifications, then open the toolbar. Grant root when prompted. Pause saves the current clip; Resume creates a new clip. Native resolution and unlimited duration on supported devices. Hide the toolbar to keep it out of the video; the recording notification stays active."); layout.addView(info);
         Button overlay=new Button(this); overlay.setText("Allow floating toolbar");
         overlay.setOnClickListener(v->startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName())))); layout.addView(overlay);
         Button notification=new Button(this); notification.setText("Allow recording notifications");
