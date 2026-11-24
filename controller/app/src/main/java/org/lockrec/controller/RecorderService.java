@@ -76,7 +76,7 @@ public class RecorderService extends Service {
     void hide(){if(bar!=null){try{wm.removeView(bar);}catch(RuntimeException ignored){}bar=null;}}
     String root(String command)throws Exception{
         if(!Pattern.matches("status|start native|stop",command))throw new IllegalArgumentException();
-        Process p=new ProcessBuilder("su","-c","/system/bin/sh "+SCRIPT+" "+command).redirectErrorStream(true).start();
+        java.lang.Process p=new ProcessBuilder("su","-c","/system/bin/sh "+SCRIPT+" "+command).redirectErrorStream(true).start();
         ByteArrayOutputStream out=new ByteArrayOutputStream();
         try(InputStream in=p.getInputStream()){byte[] b=new byte[1024];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}
         int rc=p.waitFor(); if(rc!=0)throw new IOException(out.toString("UTF-8")); return out.toString("UTF-8").trim();
