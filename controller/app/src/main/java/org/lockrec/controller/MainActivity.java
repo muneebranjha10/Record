@@ -20,6 +20,14 @@ public class MainActivity extends Activity {
     String[] resolutions, rates={"auto"};
     TextView fpsNote;
     CheckBox autoHide;
+    AnimeSceneView scene;
+    MorphRecordButton recordButton;
+    TextView captureStatus;
+    String currentState="checking";
+    boolean probing=false, resumed=false;
+    long waitUntil=0;
+    final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
+    final Runnable observer=new Runnable(){public void run(){if(!resumed)return;syncState();handler.postDelayed(this,350);}};
     int dp(int n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
     GradientDrawable shape(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
     TextView label(String text,int size,int color){TextView t=new TextView(this);t.setText(text);t.setTextSize(size);t.setTextColor(color);t.setGravity(Gravity.CENTER);return t;}
@@ -43,7 +51,45 @@ public class MainActivity extends Activity {
         Intent i=new Intent(this,RecorderService.class).setAction(cmd);
         if("begin".equals(cmd)){i.putExtra("resolution",resolutions[resolution.getSelectedItemPosition()]);i.putExtra("fps",rates[fps.getSelectedItemPosition()]);i.putExtra("auto_hide",autoHide.isChecked());}
         startForegroundService(i);
+        if("begin".equals(cmd)||"end".equals(cmd)){waitUntil=android.os.SystemClock.elapsedRealtime()+1200;applyState("begin".equals(cmd)?"starting":"stopping","begin".equals(cmd)?"Preparing recorder…":"Saving video…");}
     }
+    void applyState(String state,String message){
+        currentState=state;
+        if(recordButton!=null)recordButton.setRecorderState(state);
+        if(captureStatus!=null&&!message.contentEquals(captureStatus.getText()))captureStatus.setText(message);
+        boolean ready=state.equals("idle")||state.equals("error");
+        if(resolution!=null)resolution.setEnabled(ready);
+        if(fps!=null)fps.setEnabled(ready);
+        if(autoHide!=null)autoHide.setEnabled(ready);
+        if(scene!=null)scene.setMotionEnabled(resumed&&ready);
+    }
+    void syncState(){
+        if(RecorderService.servicePresent){
+            String s=RecorderService.uiState;
+            if(android.os.SystemClock.elapsedRealtime()<waitUntil&&(s.equals("idle")||s.equals("checking")))return;
+            applyState(s,RecorderService.uiMessage);
+        }else if(android.os.SystemClock.elapsedRealtime()>=waitUntil && !probing){
+            if(!currentState.equals("idle")&&!currentState.equals("error"))probe();
+        }
+    }
+    void probe(){
+        if(probing)return;probing=true;
+        new Thread(()->{
+            String value="error";
+            try{
+                java.lang.Process p=new ProcessBuilder("su","-c","/system/bin/sh /data/adb/modules/lockrec_universal/action.sh status").redirectErrorStream(true).start();
+                java.io.BufferedReader r=new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));String line;
+                while((line=r.readLine())!=null){if(line.trim().equals("Recording"))value="recording";else if(line.trim().equals("Idle"))value="idle";else if(line.trim().equals("Finalizing"))value="stopping";}
+                if(p.waitFor()!=0)value="error";
+            }catch(Exception ignored){}
+            final String result=value;runOnUiThread(()->{probing=false;if(isDestroyed()||!resumed||RecorderService.servicePresent)return;
+                applyState(result,result.equals("recording")?"Recording active":result.equals("idle")?"Ready to record":result.equals("stopping")?"Finalizing clip…":"Grant root access / check module");
+            });
+        },"lockrec-status").start();
+    }
+    @Override protected void onResume(){super.onResume();resumed=true;if(!RecorderService.servicePresent)probe();handler.removeCallbacks(observer);handler.post(observer);}
+    @Override protected void onPause(){resumed=false;handler.removeCallbacks(observer);if(scene!=null)scene.setMotionEnabled(false);super.onPause();}
+    @Override protected void onDestroy(){handler.removeCallbacks(observer);super.onDestroy();}
     Spinner spinner(String[] values){
         Spinner s=new Spinner(this);
         ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,values);
@@ -78,13 +124,15 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle b){
         super.onCreate(b);
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
-        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(BG);
-        LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setGravity(Gravity.CENTER);root.setPadding(dp(24),dp(32),dp(24),dp(32));scroll.addView(root);
+        FrameLayout layers=new FrameLayout(this);layers.setBackgroundColor(BG);
+        scene=new AnimeSceneView(this);layers.addView(scene,new FrameLayout.LayoutParams(-1,-1));
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(android.graphics.Color.TRANSPARENT);layers.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);root.setPadding(dp(22),dp(24),dp(22),dp(24));scroll.addView(root);
         TextView name=label("LockRec",36,WHITE);name.setTypeface(Typeface.create("sans-serif-medium",0));add(root,name,0);
-        add(root,label("NIGHT EDITION  ·  v0.9",13,BLUE),8);
-        MascotView hero=new MascotView(this);LinearLayout.LayoutParams heroParams=new LinearLayout.LayoutParams(-1,dp(174));heroParams.topMargin=dp(18);root.addView(hero,heroParams);
-        LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(dp(20),dp(24),dp(20),dp(24));panel.setBackground(shape(CARD,28));add(root,panel,16);
-        add(panel,label("Capture settings",22,WHITE),0);
+        add(root,label("L U N A R   •   E D I T I O N",12,BLUE),5);
+        android.view.View spacer=new android.view.View(this);root.addView(spacer,new LinearLayout.LayoutParams(-1,dp(148)));
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(dp(20),dp(24),dp(20),dp(24));GradientDrawable glass=shape(0xd9182039,28);glass.setStroke(dp(1),0x557e91d8);panel.setBackground(glass);add(root,panel,16);
+        add(panel,label("Capture settings",20,WHITE),0);
         add(panel,label("Lock-screen recording · Root",13,MUTED),8);
         android.util.DisplayMetrics dm=new android.util.DisplayMetrics();
         getWindowManager().getDefaultDisplay().getRealMetrics(dm);
@@ -102,9 +150,10 @@ public class MainActivity extends Activity {
         fpsNote=label("Checking recorder FPS support…",12,MUTED);add(panel,fpsNote,5);
         detectFps();
         autoHide=new CheckBox(this);autoHide.setText("Hide toolbar before recording");autoHide.setTextColor(WHITE);autoHide.setChecked(getPreferences(0).getBoolean("auto_hide",true));autoHide.setOnCheckedChangeListener((v,checked)->getPreferences(0).edit().putBoolean("auto_hide",checked).apply());add(panel,autoHide,10);
-        add(panel,button("Start recording",BLUE,0xff111a28,()->control("begin")),24);
-        add(panel,button("End recording",0xff30252a,0xffffc0c0,()->control("end")),10);
-        add(root,button("Floating controls",CARD,WHITE,()->{
+        captureStatus=label("Checking recorder…",12,BLUE);add(panel,captureStatus,13);
+        recordButton=new MorphRecordButton(this);recordButton.setEnabled(false);recordButton.setContentDescription("Checking recorder");recordButton.setOnClickListener(v->{if(currentState.equals("recording")||currentState.equals("paused"))control("end");else if(currentState.equals("idle")||currentState.equals("error"))control("begin");});
+        LinearLayout.LayoutParams recordParams=new LinearLayout.LayoutParams(-1,dp(74));recordParams.topMargin=dp(4);panel.addView(recordButton,recordParams);
+        add(root,button("Floating controls",0xc9222945,WHITE,()->{
             if(!Settings.canDrawOverlays(this)){
                 startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName())));
                 Toast.makeText(this,"Allow display over other apps, then return and tap again.",Toast.LENGTH_LONG).show();
@@ -112,6 +161,6 @@ public class MainActivity extends Activity {
         }),16);
         add(root,label("Stop or pause from the recording notification. A visible floating toolbar may appear in videos. Videos: Movies/LockRec.",12,MUTED),14);
         add(root,label("Requires root + LockRec module v0.8. AOD depends on device.",12,MUTED),8);
-        setContentView(scroll);
+        setContentView(layers);
     }
 }
