@@ -20,23 +20,36 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Check preinstalled Android SDK
+      - name: Locate Android SDK
         shell: bash
         run: |
-          echo "SDK: $ANDROID_HOME"
+          set -euo pipefail
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
-          test -x "$SDKMANAGER"
           if [ ! -f "$ANDROID_HOME/platforms/android-35/android.jar" ] || [ ! -x "$ANDROID_HOME/build-tools/35.0.0/apksigner" ]; then
             "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
           fi
           test -f "$ANDROID_HOME/platforms/android-35/android.jar"
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.11.1'
-      - run: gradle -p controller :app:assembleDebug --no-daemon
-      - run: |
-          cp controller/app/build/outputs/apk/debug/app-debug.apk LockRec-v0.6-beta.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose LockRec-v0.6-beta.apk
+          test -x "$ANDROID_HOME/build-tools/35.0.0/d8"
+      - name: Compile and sign without Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=controller/app/src/main
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          JAR="$ANDROID_HOME/platforms/android-35/android.jar"
+          OUT="$RUNNER_TEMP/lockrec-build"
+          mkdir -p "$OUT/classes" "$OUT/dex"
+          find "$SRC/java" -name '*.java' > "$OUT/sources.txt"
+          javac --release 8 -encoding UTF-8 -classpath "$JAR" -d "$OUT/classes" @"$OUT/sources.txt"
+          jar cf "$OUT/classes.jar" -C "$OUT/classes" .
+          "$BT/d8" --min-api 26 --lib "$JAR" --output "$OUT/dex" "$OUT/classes.jar"
+          "$BT/aapt2" link -I "$JAR" --manifest "$SRC/AndroidManifest.xml" --min-sdk-version 26 --target-sdk-version 34 --version-code 6 --version-name 0.6-beta --rename-manifest-package org.lockrec.controller -o "$OUT/unsigned.apk"
+          (cd "$OUT/dex" && zip -q -j "$OUT/unsigned.apk" classes*.dex)
+          "$BT/zipalign" -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
+          keytool -genkeypair -keystore "$OUT/debug.keystore" -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          "$BT/apksigner" sign --ks "$OUT/debug.keystore" --ks-pass pass:android --key-pass pass:android --out LockRec-v0.6-beta.apk "$OUT/aligned.apk"
+          "$BT/apksigner" verify --verbose LockRec-v0.6-beta.apk
+          "$BT/aapt" dump badging LockRec-v0.6-beta.apk | head -n 12
       - uses: actions/upload-artifact@v4
         with:
           name: LockRec-v0.6-beta
@@ -48,5 +61,5 @@ jobs:
           if gh release view v0.6-beta >/dev/null 2>&1; then
             gh release upload v0.6-beta LockRec-v0.6-beta.apk --clobber
           else
-            gh release create v0.6-beta LockRec-v0.6-beta.apk --target "$GITHUB_SHA" --prerelease --title "LockRec APK v0.6 Beta" --notes "Experimental APK, debug signed. Root lock-screen mode uses module v0.4. Separate high FPS screen-on mode requests hardware-reported FPS including above 120; actual cadence and hardware support vary. Hardware testing pending."
+            gh release create v0.6-beta LockRec-v0.6-beta.apk --target "$GITHUB_SHA" --prerelease --title "LockRec APK v0.6 Beta" --notes "Experimental debug-signed APK. Root mode needs module v0.4. High FPS is a separate screen-on mode; actual FPS varies. Hardware testing pending."
           fi
