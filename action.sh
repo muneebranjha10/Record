@@ -41,24 +41,38 @@ stop() {
     echo 'No active recording.'
   fi
 }
+fps_flag() {
+  help=$(/system/bin/screenrecord --help 2>&1)
+  if printf '%s\n' "$help" | grep -Eq '^[[:space:]]*--frame-rate([[:space:]=]|$)'; then echo --frame-rate
+  elif printf '%s\n' "$help" | grep -Eq '^[[:space:]]*--fps([[:space:]=]|$)'; then echo --fps
+  fi
+}
 worker() {
-  profile=$1; file=$2
-  if [ "$profile" = performance ]; then
+  profile=$1; file=$2; fps=${3:-auto}
+  case "$profile" in
+    performance|720) short=720;;
+    480|1080|1440|2160) short=$profile;;
+    native) short=0;;
+    *) exit 1;;
+  esac
+  set -- --bit-rate 20000000
+  if [ "$short" -gt 0 ]; then
     size=$(/system/bin/wm size | tail -n 1 | awk '{print $NF}')
     w=${size%x*}; h=${size#*x}
     case "$w:$h" in *[!0-9:]*|:*|*:) w=0; h=0;; esac
     if [ "$w" -gt 0 ] && [ "$h" -gt 0 ]; then
       if [ "$w" -le "$h" ]; then
-        nw=$((w<720?w/2*2:720)); nh=$((h*nw/w/2*2))
+        nw=$((w<short?w/2*2:short)); nh=$((h*nw/w/2*2))
       else
-        nh=$((h<720?h/2*2:720)); nw=$((w*nh/h/2*2))
+        nh=$((h<short?h/2*2:short)); nw=$((w*nh/h/2*2))
       fi
-      set -- --size "${nw}x${nh}" --bit-rate 10000000
-    else
-      set -- --bit-rate 10000000
+      set -- --size "${nw}x${nh}" --bit-rate 20000000
     fi
-  else
-    set -- --bit-rate 20000000
+  fi
+  if [ "$fps" != auto ]; then
+    flag=$(fps_flag)
+    [ -n "$flag" ] || { rm -rf "$STATE"; exit 1; }
+    set -- "$@" "$flag" "$fps"
   fi
   # Use zero only when the device explicitly advertises unlimited duration.
   limit=180
@@ -90,7 +104,8 @@ if [ "$#" -eq 0 ] && /system/bin/pm path org.lockrec.controller 2>/dev/null | gr
   exit 1
 fi
 case "${1:-toggle}" in
-  worker) worker "$2" "$3" ;;
+  worker) worker "$2" "$3" "$4" ;;
+  capabilities) if [ -n "$(fps_flag)" ]; then echo "fps=selectable"; else echo "fps=auto-only"; fi ;;
   stop) stop ;;
   status) if active; then echo 'Recording'; elif [ -d "$STATE" ]; then echo 'Finalizing'; else echo 'Idle'; fi ;;
   toggle|start)
@@ -103,7 +118,12 @@ case "${1:-toggle}" in
       exit 1
     fi
     profile=${2:-native}
-    case "$profile" in performance|native) ;; *) echo 'Invalid profile'; exit 1;; esac
+    case "$profile" in performance|native|480|720|1080|1440|2160) ;; *) echo 'Invalid profile'; exit 1;; esac
+    fps=${3:-auto}
+    case "$fps" in auto|30|45|60|90|120|144|165|180|240|360) ;; *) echo 'Invalid FPS'; exit 1;; esac
+    if [ "$fps" != auto ] && [ -z "$(fps_flag)" ]; then
+      echo 'This native recorder does not support manual FPS; use Auto.'; exit 1
+    fi
     [ -x /system/bin/screenrecord ] || { echo 'Native screenrecord not available'; exit 1; }
     mkdir -p "$OUTDIR" || exit 1
     mkdir "$STATE" || exit 1
@@ -112,7 +132,7 @@ case "${1:-toggle}" in
     if ! notify 'Recording active. Use LockRec controls to stop.'; then
       rm -rf "$STATE"; echo 'Recording not started: visible notification could not be verified.'; exit 1
     fi
-    nohup /system/bin/sh "$MODDIR/action.sh" worker "$profile" "$file" </dev/null >/dev/null 2>&1 &
+    nohup /system/bin/sh "$MODDIR/action.sh" worker "$profile" "$file" "$fps" </dev/null >/dev/null 2>&1 &
     echo 'Recording requested. Confirm recording notification; lock the phone to test.'
     echo "Output: $file"
     ;;
