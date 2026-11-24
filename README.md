@@ -10,3 +10,6 @@ Install APK v0.9 with the existing v0.8 module. New original animated anime-insp
 
 ## Lunar Edition v1.0
 Full-screen original layered anime-inspired night city scene, ambient motion and a single animated Start/End control. The control follows observed root recorder state; it waits for the recorder process before displaying End. Background motion pauses during recording and when the app is not foreground. Existing v0.8 root module remains required. FPS is still Auto on recorders without a supported flag. Toolbar auto-hide remains enabled by default. Device testing pending.
+
+## Sakura × Azure v1.1
+Pink and cyan full-screen layered anime scene with twin characters, perspective rings and particles. Single morphing button retained. Manual FPS choices recalculate for selected resolution on compatible native recorders. Samsung native recorder without FPS flag remains Auto. Existing root module v0.8 required; protected content is not bypassed. Device testing pending.
