@@ -1,6 +1,6 @@
 id=lockrec_universal
 name=LockRec Universal
-version=0.4-beta
-versionCode=4
+version=0.8-beta
+versionCode=8
 author=Record Project
-description=Native resolution by default, unlimited duration where supported, manual controls and visible notification. AOD experimental.
+description=Manual lock screen recording; selectable resolution and FPS on supported native recorders; visible recording notification.
