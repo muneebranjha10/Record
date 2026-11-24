@@ -58,9 +58,10 @@ public class HighFpsService extends Service {
         else {stopSelf();return START_NOT_STICKY;}
         try{
             if(!getSystemService(NotificationManager.class).areNotificationsEnabled()||getSystemService(NotificationManager.class).getNotificationChannel(CHANNEL).getImportance()==NotificationManager.IMPORTANCE_NONE)throw new IllegalStateException("Recording notifications disabled");
-            fps=intent.getIntExtra("fps",60);if(fps!=60&&fps!=90&&fps!=120)throw new IllegalArgumentException("Unsupported FPS request");
+            fps=intent.getIntExtra("fps",60);
             int w=intent.getIntExtra("width",0)&~1,h=intent.getIntExtra("height",0)&~1,dpi=intent.getIntExtra("density",0);
             if(w<2||h<2||dpi<=0)throw new IllegalArgumentException("Invalid display size");
+            if(fps<1||fps>FpsCapabilities.maxRefresh(this)||!FpsCapabilities.supports(w,h,fps))throw new IllegalArgumentException("Display or encoder does not report this size and FPS");
             int encoder=0, bitrate=0;
             String[] types={"video/avc","video/hevc"};
             for(String type:types){
