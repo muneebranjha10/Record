@@ -20,11 +20,11 @@ public class RecorderService extends Service {
     WindowManager wm; LinearLayout bar; TextView label; Button start, pause, end;
     boolean busy=false, recording=false, paused=false, stopping=false, closed=false, known=false, accessible=false;
     String message="Checking root access";
-    boolean pendingStart=false;
+    boolean pendingStart=false, polling=false;
     String profile="native", fps="auto", lastNotice="";
     Runnable poll=new Runnable(){public void run(){
         if(closed)return;
-        if(!busy) status();
+        if(!busy&&!polling) status();
         main.postDelayed(this,2000);
     }};
     @Override public IBinder onBind(Intent i){return null;}
@@ -99,9 +99,9 @@ public class RecorderService extends Service {
             final String r=result; main.post(()->{if(closed)return;busy=false;callback.done(r);refresh();});});
     }
     void status(){
-        if(busy||closed)return;busy=true;
+        if(busy||polling||closed)return;polling=true;
         io.execute(()->{String value;try{value=root("status");}catch(Exception e){value="ERROR: "+e.getMessage();}final String s=value;
-        main.post(()->{if(closed)return;busy=false;
+        main.post(()->{polling=false;if(closed||busy)return;
         if(s.equals("Recording")){accessible=true;known=true;recording=true;if(!stopping){paused=false;message="Recording · "+(profile.equals("native")?"Native":profile+"p");}}
         else if(s.equals("Finalizing")){accessible=true;known=true;message="Finalizing clip…";}
         else if(s.equals("Idle")){accessible=true;known=true;recording=false;if(stopping){stopping=false;if(!paused){message="Ended";finishController();return;}}message=paused?"Paused · clip saved":"Ready";}
