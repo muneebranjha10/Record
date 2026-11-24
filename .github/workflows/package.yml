@@ -13,9 +13,9 @@ jobs:
       - run: |
           for f in action.sh customize.sh uninstall.sh; do sh -n "$f"; done
           chmod +x action.sh customize.sh uninstall.sh
-          zip LockRec-Universal-v0.2-beta.zip module.prop action.sh customize.sh uninstall.sh README.md skip_mount
-          unzip -t LockRec-Universal-v0.2-beta.zip
+          zip LockRec-Universal-v0.3-beta.zip module.prop action.sh customize.sh uninstall.sh README.md skip_mount
+          unzip -t LockRec-Universal-v0.3-beta.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: LockRec-Universal-v0.2-beta
-          path: LockRec-Universal-v0.2-beta.zip
+          name: LockRec-Universal-v0.3-beta
+          path: LockRec-Universal-v0.3-beta.zip
