@@ -15,7 +15,7 @@ import android.view.Gravity;
 import android.widget.*;
 
 public class MainActivity extends Activity {
-    static final int BG=0xff08090b, CARD=0xff171b22, WHITE=0xfff4f6fa, MUTED=0xffa8afbc, BLUE=0xffa8c6ff;
+    static final int BG=0xff110c22, CARD=0xff251b38, WHITE=0xfffff4fc, MUTED=0xffc4bad8, BLUE=0xff91e0ff;
     Spinner resolution, fps;
     String[] resolutions, rates={"auto"};
     TextView fpsNote;
@@ -24,7 +24,7 @@ public class MainActivity extends Activity {
     MorphRecordButton recordButton;
     TextView captureStatus;
     String currentState="checking";
-    boolean probing=false, resumed=false;
+    boolean probing=false, resumed=false, manualFps=false;
     long waitUntil=0, lastProbe=0;
     final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
     final Runnable observer=new Runnable(){public void run(){if(!resumed)return;syncState();handler.postDelayed(this,350);}};
@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
         if(captureStatus!=null&&!message.contentEquals(captureStatus.getText()))captureStatus.setText(message);
         boolean ready=state.equals("idle")||state.equals("error");
         if(resolution!=null)resolution.setEnabled(ready);
-        if(fps!=null)fps.setEnabled(ready);
+        if(fps!=null)fps.setEnabled(ready&&manualFps&&rates.length>1);
         if(autoHide!=null)autoHide.setEnabled(ready);
         if(scene!=null)scene.setMotionEnabled(resumed&&ready);
     }
@@ -94,7 +94,7 @@ public class MainActivity extends Activity {
         Spinner s=new Spinner(this);
         ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,values);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);s.setAdapter(adapter);
-        s.setBackground(shape(0xff262c36,14));s.setPadding(dp(12),dp(10),dp(12),dp(10));return s;
+        s.setBackground(shape(0xff31264b,14));s.setPadding(dp(12),dp(10),dp(12),dp(10));return s;
     }
     void detectFps(){
         new Thread(()->{
@@ -109,17 +109,25 @@ public class MainActivity extends Activity {
             runOnUiThread(()->{
                 if(isFinishing()||isDestroyed())return;
                 if(!error.isEmpty()){fpsNote.setText(error);return;}
-                if(!ok){fpsNote.setText("This device's root recorder cannot set a fixed FPS.");return;}
-                android.util.DisplayMetrics m=new android.util.DisplayMetrics();getWindowManager().getDefaultDisplay().getRealMetrics(m);
-                int[] candidates=FpsCapabilities.options(this,m.widthPixels&~1,m.heightPixels&~1);
-                java.util.ArrayList<String> a=new java.util.ArrayList<>(), names=new java.util.ArrayList<>();a.add("auto");names.add("Auto");
-                for(int f:new int[]{30,45,60,90,120,144,165,180,240,360})for(int supportedRate:candidates)if(f==supportedRate){a.add(""+f);names.add(f+" FPS");break;}
-                rates=a.toArray(new String[0]);
-                ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,names);
-                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);fps.setAdapter(adapter);
-                fpsNote.setText("FPS is a requested rate; actual frames depend on the device.");
+                if(!ok){manualFps=false;fps.setEnabled(false);fpsNote.setText("Manual FPS unavailable in this root engine. Lock-screen mode uses the native capture rate.");return;}
+                manualFps=true;updateRates();
             });
         },"lockrec-capabilities").start();
+    }
+    void updateRates(){
+        if(!manualFps||resolution==null||fps==null)return;
+        android.util.DisplayMetrics m=new android.util.DisplayMetrics();getWindowManager().getDefaultDisplay().getRealMetrics(m);
+        int w=m.widthPixels&~1,h=m.heightPixels&~1;
+        String profile=resolutions[Math.max(0,resolution.getSelectedItemPosition())];
+        if(!profile.equals("native")){int edge=Integer.parseInt(profile);float factor=Math.min(1f,edge/(float)Math.min(w,h));w=((int)(w*factor))&~1;h=((int)(h*factor))&~1;}
+        int[] candidates=FpsCapabilities.options(this,w,h);
+        java.util.ArrayList<String> a=new java.util.ArrayList<>(), names=new java.util.ArrayList<>();a.add("auto");names.add("Auto");
+        for(int f:new int[]{30,45,60,90,120,144,165,180,240,360})for(int supportedRate:candidates)if(f==supportedRate){a.add(""+f);names.add(f+" FPS");break;}
+        String previous=rates[Math.max(0,Math.min(rates.length-1,fps.getSelectedItemPosition()))];
+        rates=a.toArray(new String[0]);ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,names);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);fps.setAdapter(adapter);fps.setSelection(Math.max(0,a.indexOf(previous)));
+        fps.setEnabled((currentState.equals("idle")||currentState.equals("error"))&&rates.length>1);
+        fpsNote.setText(rates.length>1?"Requested FPS at selected resolution; actual rate varies.":"No manual FPS rate reported at this resolution.");
     }
     @Override public void onCreate(Bundle b){
         super.onCreate(b);
@@ -128,10 +136,10 @@ public class MainActivity extends Activity {
         scene=new AnimeSceneView(this);layers.addView(scene,new FrameLayout.LayoutParams(-1,-1));
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(android.graphics.Color.TRANSPARENT);layers.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);root.setPadding(dp(22),dp(24),dp(22),dp(24));scroll.addView(root);
-        TextView name=label("LockRec",36,WHITE);name.setTypeface(Typeface.create("sans-serif-medium",0));add(root,name,0);
-        add(root,label("L U N A R   •   E D I T I O N",12,BLUE),5);
+        TextView name=label("LockRec",36,WHITE);name.setTypeface(Typeface.create("sans-serif-medium",0));name.setShadowLayer(dp(10),0,0,0xffb963e6);add(root,name,0);
+        add(root,label("S A K U R A   ×   A Z U R E",12,BLUE),5);
         android.view.View spacer=new android.view.View(this);root.addView(spacer,new LinearLayout.LayoutParams(-1,dp(148)));
-        LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(dp(20),dp(24),dp(20),dp(24));GradientDrawable glass=shape(0xd9182039,28);glass.setStroke(dp(1),0x557e91d8);panel.setBackground(glass);add(root,panel,16);
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(dp(20),dp(24),dp(20),dp(24));GradientDrawable glass=shape(0xdb241b39,28);glass.setStroke(dp(1),0x99df8bcf);panel.setBackground(glass);add(root,panel,16);
         add(panel,label("Capture settings",20,WHITE),0);
         add(panel,label("Lock-screen recording · Root",13,MUTED),8);
         android.util.DisplayMetrics dm=new android.util.DisplayMetrics();
@@ -146,14 +154,15 @@ public class MainActivity extends Activity {
         add(panel,label("Resolution",13,MUTED),20);
         resolution=spinner(rl);add(panel,resolution,4);
         add(panel,label("Frame rate",13,MUTED),14);
-        fps=spinner(new String[]{"Auto · native engine"});add(panel,fps,4);
+        fps=spinner(new String[]{"Auto · native engine"});fps.setEnabled(false);add(panel,fps,4);
+        resolution.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,android.view.View v,int pos,long id){updateRates();}public void onNothingSelected(android.widget.AdapterView<?> p){}});
         fpsNote=label("Checking recorder FPS support…",12,MUTED);add(panel,fpsNote,5);
         detectFps();
         autoHide=new CheckBox(this);autoHide.setText("Hide toolbar before recording");autoHide.setTextColor(WHITE);autoHide.setChecked(getPreferences(0).getBoolean("auto_hide",true));autoHide.setOnCheckedChangeListener((v,checked)->getPreferences(0).edit().putBoolean("auto_hide",checked).apply());add(panel,autoHide,10);
         captureStatus=label("Checking recorder…",12,BLUE);add(panel,captureStatus,13);
         recordButton=new MorphRecordButton(this);recordButton.setEnabled(false);recordButton.setContentDescription("Checking recorder");recordButton.setOnClickListener(v->{if(currentState.equals("recording")||currentState.equals("paused"))control("end");else if(currentState.equals("idle")||currentState.equals("error"))control("begin");});
         LinearLayout.LayoutParams recordParams=new LinearLayout.LayoutParams(-1,dp(74));recordParams.topMargin=dp(4);panel.addView(recordButton,recordParams);
-        add(root,button("Floating controls",0xc9222945,WHITE,()->{
+        add(root,button("Floating controls",0xd2362450,WHITE,()->{
             if(!Settings.canDrawOverlays(this)){
                 startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName())));
                 Toast.makeText(this,"Allow display over other apps, then return and tap again.",Toast.LENGTH_LONG).show();
