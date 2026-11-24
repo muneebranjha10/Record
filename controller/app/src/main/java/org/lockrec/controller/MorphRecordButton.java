@@ -31,7 +31,7 @@ public final class MorphRecordButton extends View {
         c.save();c.scale(press,press,cx,cy);
         float inset=dp(7+17*t),top=dp(9+2*t),bottom=h-top;
         float radius=dp(32-10*t);
-        int a=blend(0xffb0a6ff,0xffff829e,t),b=blend(0xff6f9dff,0xffe84471,t);
+        int a=blend(0xffff9cd8,0xffff829e,t),b=blend(0xff59d4ff,0xffe84471,t);
         p.setShader(null);p.setColor((a&0xffffff)|0x33000000);c.drawRoundRect(inset-dp(4),top-dp(4),w-inset+dp(4),bottom+dp(4),radius+dp(4),radius+dp(4),p);
         p.setShader(new LinearGradient(inset,top,w-inset,bottom,a,b,Shader.TileMode.CLAMP));c.drawRoundRect(inset,top,w-inset,bottom,radius,radius,p);p.setShader(null);
         p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(1));p.setColor(0x55ffffff);c.drawRoundRect(inset+.5f,top+.5f,w-inset-.5f,bottom-.5f,radius,radius,p);p.setStyle(Paint.Style.FILL);
