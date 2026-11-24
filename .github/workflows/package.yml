@@ -11,11 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
+          set -e
           for f in action.sh customize.sh uninstall.sh; do sh -n "$f"; done
           chmod +x action.sh customize.sh uninstall.sh
-          zip LockRec-Universal-v0.4-beta.zip module.prop action.sh customize.sh uninstall.sh README.md skip_mount
-          unzip -t LockRec-Universal-v0.4-beta.zip
+          zip LockRec-Universal-v0.8-beta.zip module.prop action.sh customize.sh uninstall.sh README.md skip_mount
+          unzip -t LockRec-Universal-v0.8-beta.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: LockRec-Universal-v0.4-beta
-          path: LockRec-Universal-v0.4-beta.zip
+          name: LockRec-Universal-v0.8-beta
+          path: LockRec-Universal-v0.8-beta.zip
