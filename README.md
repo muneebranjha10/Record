@@ -1,4 +1,4 @@
-# Record — LockRec Universal v0.2 beta
+# Record — LockRec Universal v0.3 beta
 
 Experimental root-manager module for recording your own lock-screen animations. KernelSU is the first target; other root managers are untested. No LSPosed, boot service, secure-layer capture, hidden recording, networking, or firmware modifications.
 
@@ -6,7 +6,10 @@ Install the module ZIP through KernelSU, reboot if requested, then tap its Actio
 
 Default performance mode limits the short edge to 720 pixels and uses 10 Mbps. Native mode uses 18 Mbps. Optional root command: `sh /data/adb/modules/lockrec_universal/action.sh start native`. To stop: `sh /data/adb/modules/lockrec_universal/action.sh stop`. If stale session remains after a crash/reboot, reinstall module. Actual FPS and AOD depend on device/firmware. 60 FPS target, not guarantee. Set high refresh rate manually. Black frames with display off are expected. No frame interpolation. This is a script-based module, not APK.
 
-Package with `zip LockRec-Universal-v0.2-beta.zip module.prop action.sh customize.sh uninstall.sh README.md skip_mount`.
+Package with `zip LockRec-Universal-v0.3-beta.zip module.prop action.sh customize.sh uninstall.sh README.md skip_mount`.
 
-## v0.2
+## v0.3
 Uses the shell UID for recording notifications, with root fallback. Recording remains blocked if neither confirms posting. Diagnostics are in notification.log. Upgrade over v0.1 with no recording active.
+
+## Floating controller
+Install the separately built LockRec Controller APK. Allow overlay and notification permissions, open the toolbar, and grant root access when prompted. Tap module Action to reopen it. Without the APK, Action retains the previous toggle behavior. Pause finalizes the current clip; Resume starts a new clip. Hide removes only the overlay; use the notification to show or end. The recording limit remains 60 seconds per clip. Android may hide the overlay on sensitive screens. Experimental, hardware testing pending.
