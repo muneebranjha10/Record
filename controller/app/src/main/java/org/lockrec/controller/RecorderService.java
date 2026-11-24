@@ -20,6 +20,10 @@ public class RecorderService extends Service {
     WindowManager wm; LinearLayout bar; TextView label; Button start, pause, end;
     boolean busy=false, recording=false, paused=false, stopping=false, closed=false, known=false, accessible=false;
     String message="Checking root access";
+    public static volatile String uiState="checking", uiMessage="Checking recorder";
+    public static volatile boolean servicePresent=false;
+    boolean awaitingProcess=false;
+    long startDeadline=0;
     boolean pendingStart=false, polling=false, autoHide=true;
     String profile="native", fps="auto", lastNotice="";
     Runnable poll=new Runnable(){public void run(){
@@ -29,7 +33,7 @@ public class RecorderService extends Service {
     }};
     @Override public IBinder onBind(Intent i){return null;}
     @Override public void onCreate(){
-        super.onCreate();
+        super.onCreate();servicePresent=true;uiState="checking";uiMessage="Checking recorder";
         wm=getSystemService(WindowManager.class);
         NotificationChannel ch=new NotificationChannel(CHANNEL,"Recording controls",NotificationManager.IMPORTANCE_LOW);
         getSystemService(NotificationManager.class).createNotificationChannel(ch);
@@ -57,7 +61,7 @@ public class RecorderService extends Service {
                 profile=i.getStringExtra("resolution");fps=i.getStringExtra("fps");
                 if(profile==null)profile="native";if(fps==null)fps="auto";autoHide=i.getBooleanExtra("auto_hide",true);
             }
-            pendingStart=true;if(!busy)status();
+            pendingStart=true;refresh();if(!busy)status();
         }
         else if("pause".equals(a)){if(paused){pendingStart=true;if(!busy)status();}else pause();}
         return START_NOT_STICKY;
@@ -102,9 +106,9 @@ public class RecorderService extends Service {
         if(busy||polling||closed)return;polling=true;
         io.execute(()->{String value;try{value=root("status");}catch(Exception e){value="ERROR: "+e.getMessage();}final String s=value;
         main.post(()->{polling=false;if(closed||busy)return;
-        if(s.equals("Recording")){accessible=true;known=true;if(!stopping){recording=true;paused=false;message="Recording · "+(profile.equals("native")?"Native":profile+"p");}}
-        else if(s.equals("Finalizing")){accessible=true;known=true;if(stopping)message="Finalizing clip…";}
-        else if(s.equals("Idle")){accessible=true;known=true;recording=false;if(stopping){stopping=false;if(!paused){message="Ended";finishController();return;}}message=paused?"Paused · clip saved":"Ready";}
+        if(s.equals("Recording")){accessible=true;known=true;if(!stopping){awaitingProcess=false;recording=true;paused=false;message="Recording · "+(profile.equals("native")?"Native":profile+"p");}}
+        else if(s.equals("Finalizing")){accessible=true;known=true;if(stopping)message="Finalizing clip…";if(awaitingProcess&&SystemClock.elapsedRealtime()>startDeadline){awaitingProcess=false;message="Recorder did not become active";}}
+        else if(s.equals("Idle")){accessible=true;known=true;recording=false;if(awaitingProcess){if(SystemClock.elapsedRealtime()<startDeadline){refresh();return;}awaitingProcess=false;message="Recording did not start; check module log";refresh();return;}if(stopping){stopping=false;if(!paused){message="Ended";finishController();return;}}message=paused?"Paused · clip saved":"Ready";}
         else{accessible=false;known=false;pendingStart=false;message="Root or module unavailable";Toast.makeText(this,"Grant LockRec root in KernelSU and verify the module is installed.",Toast.LENGTH_LONG).show();finishController();return;}
         if(pendingStart&&accessible){if(recording){pendingStart=false;if(!autoHide)show();}else if(s.equals("Idle")&&!stopping){pendingStart=false;begin();}}
         refresh();
@@ -114,9 +118,9 @@ public class RecorderService extends Service {
         if(busy||!known||!accessible||recording||stopping)return;
         NotificationManager nm=getSystemService(NotificationManager.class);
         if(!nm.areNotificationsEnabled()||nm.getNotificationChannel(CHANNEL).getImportance()==NotificationManager.IMPORTANCE_NONE){message="Enable notifications first";refresh();return;}
-        message="Starting…";
+        message="Starting…";awaitingProcess=true;startDeadline=SystemClock.elapsedRealtime()+10000;
         if(autoHide)hide();
-        run(()->root("start "+profile+" "+fps),s->{if(s.startsWith("ERROR")||!s.contains("Recording requested")){message="Start failed: "+s;Toast.makeText(this,message,Toast.LENGTH_LONG).show();return;}paused=false;recording=true;message="Recording · "+(profile.equals("native")?"Native":profile+"p");if(!autoHide)show();});
+        run(()->root("start "+profile+" "+fps),s->{if(s.startsWith("ERROR")||!s.contains("Recording requested")){awaitingProcess=false;message="Start failed: "+s;Toast.makeText(this,message,Toast.LENGTH_LONG).show();return;}paused=false;message="Waiting for recorder…";main.postDelayed(()->{if(!closed)status();},350);if(!autoHide)show();});
     }
     void pause(){
         if(busy||!recording||stopping)return;
@@ -126,12 +130,13 @@ public class RecorderService extends Service {
     void end(){
         if(busy){main.postDelayed(()->{if(!closed)end();},500);return;}
         paused=false;
-        pendingStart=false;if(!recording&&!stopping&&known){finishController();return;}
+        pendingStart=false;if(!recording&&!stopping&&!awaitingProcess&&known){finishController();return;}awaitingProcess=false;
         message="Ending…";hide();
         run(()->root("stop"),s->{if(s.startsWith("ERROR")){message="Stop failed · use module Action";return;}stopping=true;recording=false;message="Finalizing clip…";});
     }
     void refresh(){
         if(closed)return;
+        uiState=stopping?"stopping":awaitingProcess||pendingStart?"starting":recording?"recording":paused?"paused":known?"idle":"checking";uiMessage=message;
         if(bar!=null){
             String line=message.length()>70?message.substring(0,70):message;
             if(!line.contentEquals(label.getText()))label.setText(line);
@@ -147,6 +152,6 @@ public class RecorderService extends Service {
         String noticeKey=message+"|"+paused;
         if(!noticeKey.equals(lastNotice)){lastNotice=noticeKey;try{getSystemService(NotificationManager.class).notify(34,notification());}catch(RuntimeException ignored){}}
     }
-    void finishController(){closed=true;hide();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
-    @Override public void onDestroy(){closed=true;main.removeCallbacksAndMessages(null);hide();io.shutdownNow();super.onDestroy();}
+    void finishController(){uiState="idle";uiMessage=message;closed=true;hide();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+    @Override public void onDestroy(){servicePresent=false;if(!closed){uiState="checking";uiMessage="Check recorder status";}closed=true;main.removeCallbacksAndMessages(null);hide();io.shutdownNow();super.onDestroy();}
 }
