@@ -34,11 +34,18 @@ public final class AnimeSceneView extends View {
         c.drawArc(-rx,-ry,rx,ry,degrees,42,false,p);p.setStyle(Paint.Style.FILL);
         float a=(float)Math.toRadians(degrees);glow(c,(float)Math.cos(a)*rx,(float)Math.sin(a)*ry,12,col,col&0xffffff);c.restore();
     }
-    private void drawCharacter(Canvas c,float x,float y,float scale,boolean pink,boolean mirror){
+    private void drawCharacter(Canvas c,float originX,float originY,float scale,boolean pink,boolean mirror){
         // Anime character: rim-lit midnight hair, jacket, expressive eyes.
-        c.save();c.translate(x,y);c.scale(scale,scale);if(mirror){c.translate(192,0);c.scale(-1,1);}
+        c.save();c.translate(originX,originY);c.scale(scale,scale);if(mirror){c.translate(192,0);c.scale(-1,1);}
         Path hair=new Path();hair.moveTo(19,138);hair.cubicTo(-1,64,25,14,87,14);hair.cubicTo(150,8,183,58,171,133);hair.cubicTo(168,170,184,208,192,239);hair.lineTo(20,239);hair.cubicTo(45,193,18,172,19,138);hair.close();
         paintPath(c,hair,pink?0xfff8aadf:0xff9bdcff,pink?0xff51224f:0xff173a69,10,240);
+        if(pink){
+            ellipse(c,3,19,50,65,0xffbf70b9);ellipse(c,140,14,185,61,0xff9b4d97);
+            ellipse(c,11,22,42,47,0xfff6b6e4);ellipse(c,147,17,178,43,0xffe69ed6);
+        } else {
+            poly(c,0xff76caff,10,79,6,44,24,20,39,13,25,48);
+            poly(c,0xff3676bc,155,24,182,42,188,76,168,59);
+        }
         Path coat=new Path();coat.moveTo(2,255);coat.cubicTo(14,206,46,194,73,191);coat.lineTo(112,191);coat.cubicTo(149,194,179,211,190,255);coat.lineTo(2,255);coat.close();paintPath(c,coat,pink?0xffcd6caa:0xff4ba9ee,pink?0xff381c42:0xff182849,188,255);
         poly(c,pink?0xff481f45:0xff12284b,45,201,75,193,91,219,61,253,30,253);poly(c,pink?0xffffb5df:0xff8ddfff,110,193,143,205,162,253,119,253,92,220);
         ellipse(c,73,161,112,209,0xffd9a5a3);
@@ -54,6 +61,7 @@ public final class AnimeSceneView extends View {
         line(c,93,149,99,150,0xffa96885,1.4f);
         ellipse(c,51,141,63,145,0x559c4e78);ellipse(c,125,141,137,145,0x559c4e78);
         poly(c,pink?0xff9feaff:0xffffb9e8,144,61,148,70,158,71,150,77,152,87,144,81,136,87,138,77,130,71,140,70);
+        if(!pink){line(c,151,110,163,111,0xff9ceaff,4);line(c,162,111,157,141,0xff5cc9ff,3);ellipse(c,151,137,160,145,0xffb7f5ff);}
         c.restore();
     }
     @Override protected void onDraw(Canvas canvas){
