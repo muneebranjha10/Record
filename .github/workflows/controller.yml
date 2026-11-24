@@ -20,25 +20,33 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Check preinstalled Android SDK
+        shell: bash
+        run: |
+          echo "SDK: $ANDROID_HOME"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          if [ ! -f "$ANDROID_HOME/platforms/android-35/android.jar" ] || [ ! -x "$ANDROID_HOME/build-tools/35.0.0/apksigner" ]; then
+            "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          fi
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
       - run: gradle -p controller :app:assembleDebug --no-daemon
       - run: |
-          cp controller/app/build/outputs/apk/debug/app-debug.apk LockRec-v0.5-beta.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose LockRec-v0.5-beta.apk
+          cp controller/app/build/outputs/apk/debug/app-debug.apk LockRec-v0.6-beta.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose LockRec-v0.6-beta.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: LockRec-v0.5-beta
-          path: LockRec-v0.5-beta.apk
+          name: LockRec-v0.6-beta
+          path: LockRec-v0.6-beta.apk
       - name: Publish verified APK as prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v0.5-beta >/dev/null 2>&1; then
-            gh release upload v0.5-beta LockRec-v0.5-beta.apk --clobber
+          if gh release view v0.6-beta >/dev/null 2>&1; then
+            gh release upload v0.6-beta LockRec-v0.6-beta.apk --clobber
           else
-            gh release create v0.5-beta LockRec-v0.5-beta.apk --target "$GITHUB_SHA" --prerelease --title "LockRec APK v0.5 Beta" --notes "Experimental APK, debug signed. Root lock-screen mode uses module v0.4. Separate high FPS screen-on mode requests 60/90/120 FPS; actual cadence and hardware support vary. Hardware testing pending."
+            gh release create v0.6-beta LockRec-v0.6-beta.apk --target "$GITHUB_SHA" --prerelease --title "LockRec APK v0.6 Beta" --notes "Experimental APK, debug signed. Root lock-screen mode uses module v0.4. Separate high FPS screen-on mode requests hardware-reported FPS including above 120; actual cadence and hardware support vary. Hardware testing pending."
           fi
