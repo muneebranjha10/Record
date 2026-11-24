@@ -65,10 +65,19 @@ worker() {
   rm -rf "$STATE"
   exit "$rc"
 }
+# Open the optional controller only on a manual manager Action (no arguments).
+if [ "$#" -eq 0 ] && /system/bin/pm path org.lockrec.controller 2>/dev/null | grep -q '^package:'; then
+  if /system/bin/am start --user current -n org.lockrec.controller/.MainActivity --ez from_module true >/dev/null 2>&1; then
+    echo 'Controller opened. Use Start, Pause, End or Hide.'
+    exit 0
+  fi
+  echo 'Controller launch failed; open it manually.'
+  exit 1
+fi
 case "${1:-toggle}" in
   worker) worker "$2" "$3" ;;
   stop) stop ;;
-  status) if active; then echo 'Recording'; else echo 'Idle'; fi ;;
+  status) if active; then echo 'Recording'; elif [ -d "$STATE" ]; then echo 'Finalizing'; else echo 'Idle'; fi ;;
   toggle|start)
     if active; then
       [ "${1:-toggle}" = toggle ] && stop || echo 'Already recording.'
