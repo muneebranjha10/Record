@@ -1,0 +1,21 @@
+name: Package LockRec
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          for f in action.sh customize.sh uninstall.sh; do sh -n "$f"; done
+          chmod +x action.sh customize.sh uninstall.sh
+          zip LockRec-Universal-v0.1-beta.zip module.prop action.sh customize.sh uninstall.sh README.md skip_mount
+          unzip -t LockRec-Universal-v0.1-beta.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LockRec-Universal-v0.1-beta
+          path: LockRec-Universal-v0.1-beta.zip
