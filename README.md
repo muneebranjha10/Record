@@ -13,3 +13,6 @@ Full-screen original layered anime-inspired night city scene, ambient motion and
 
 ## Sakura × Azure v1.1
 Pink and cyan full-screen layered anime scene with twin characters, perspective rings and particles. Single morphing button retained. Manual FPS choices recalculate for selected resolution on compatible native recorders. Samsung native recorder without FPS flag remains Auto. Existing root module v0.8 required; protected content is not bypassed. Device testing pending.
+
+## Sakura × Azure v1.2
+Adds a custom pink and cyan adaptive launcher icon. Recorder engine and module remain unchanged from v1.1. Requires module v0.8. Public beta: broader device compatibility remains unverified.
