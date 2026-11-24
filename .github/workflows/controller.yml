@@ -1,12 +1,16 @@
-name: Build LockRec Controller
+name: Build LockRec APK
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - 'controller/**'
       - '.github/workflows/controller.yml'
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: lockrec-apk-build
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,7 +26,19 @@ jobs:
         with:
           gradle-version: '8.11.1'
       - run: gradle -p controller :app:assembleDebug --no-daemon
+      - run: |
+          cp controller/app/build/outputs/apk/debug/app-debug.apk LockRec-v0.5-beta.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose LockRec-v0.5-beta.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: LockRec-Controller-v0.4-beta
-          path: controller/app/build/outputs/apk/debug/app-debug.apk
+          name: LockRec-v0.5-beta
+          path: LockRec-v0.5-beta.apk
+      - name: Publish verified APK as prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.5-beta >/dev/null 2>&1; then
+            gh release upload v0.5-beta LockRec-v0.5-beta.apk --clobber
+          else
+            gh release create v0.5-beta LockRec-v0.5-beta.apk --target "$GITHUB_SHA" --prerelease --title "LockRec APK v0.5 Beta" --notes "Experimental APK, debug signed. Root lock-screen mode uses module v0.4. Separate high FPS screen-on mode requests 60/90/120 FPS; actual cadence and hardware support vary. Hardware testing pending."
+          fi
