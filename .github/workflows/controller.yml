@@ -49,7 +49,7 @@ jobs:
           keytool -genkeypair -keystore "$OUT/debug.keystore" -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           "$BT/apksigner" sign --ks "$OUT/debug.keystore" --ks-pass pass:android --key-pass pass:android --out LockRec-v0.6-beta.apk "$OUT/aligned.apk"
           "$BT/apksigner" verify --verbose LockRec-v0.6-beta.apk
-          "$BT/aapt" dump badging LockRec-v0.6-beta.apk | head -n 12
+          "$BT/aapt" dump badging LockRec-v0.6-beta.apk | sed -n '1,12p'
       - uses: actions/upload-artifact@v4
         with:
           name: LockRec-v0.6-beta
