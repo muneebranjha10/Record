@@ -1,15 +1,6 @@
-# Record — LockRec Universal v0.3 beta
+# LockRec Universal v0.4 beta
+Install via KernelSU; reboot. Manually start with Action, confirm the notification, and stop via Action if no controller installed. With the optional controller, use its Start/End controls or the explicit root stop command. Recordings are saved in Movies/LockRec. Never dismiss the recording notification while recording. No boot recording or protected-layer bypass.
 
-Experimental root-manager module for recording your own lock-screen animations. KernelSU is the first target; other root managers are untested. No LSPosed, boot service, secure-layer capture, hidden recording, networking, or firmware modifications.
+Native resolution (as supported by the display and encoder) is the default, at 20 Mbps. The performance option is still available with action.sh start performance. No forced 60 FPS; actual FPS depends on the device. The recorder uses --time-limit 0 only if its help explicitly advertises removal of the time limit; otherwise it uses 180 seconds. Unlimited means no software time cap on supported devices, not unlimited storage or battery. Stop before storage becomes low. AOD is experimental. Display off can produce black frames. Avoid recording credentials and private information.
 
-Install the module ZIP through KernelSU, reboot if requested, then tap its Action button while unlocked. Confirm the LockRec notification, lock the phone, wake it or test AOD. Tap Action again while unlocked to stop, or wait for the 60-second limit. Output is Movies/LockRec. If the notification is unavailable, the module declines to start. The notification is a shell notification, not a foreground-service indicator; do not dismiss it while recording. Avoid recording credentials or other people's private information.
-
-Default performance mode limits the short edge to 720 pixels and uses 10 Mbps. Native mode uses 18 Mbps. Optional root command: `sh /data/adb/modules/lockrec_universal/action.sh start native`. To stop: `sh /data/adb/modules/lockrec_universal/action.sh stop`. If stale session remains after a crash/reboot, reinstall module. Actual FPS and AOD depend on device/firmware. 60 FPS target, not guarantee. Set high refresh rate manually. Black frames with display off are expected. No frame interpolation. This is a script-based module, not APK.
-
-Package with `zip LockRec-Universal-v0.3-beta.zip module.prop action.sh customize.sh uninstall.sh README.md skip_mount`.
-
-## v0.3
-Uses the shell UID for recording notifications, with root fallback. Recording remains blocked if neither confirms posting. Diagnostics are in notification.log. Upgrade over v0.1 with no recording active.
-
-## Floating controller
-Install the separately built LockRec Controller APK. Allow overlay and notification permissions, open the toolbar, and grant root access when prompted. Tap module Action to reopen it. Without the APK, Action retains the previous toggle behavior. Pause finalizes the current clip; Resume starts a new clip. Hide removes only the overlay; use the notification to show or end. The recording limit remains 60 seconds per clip. Android may hide the overlay on sensitive screens. Experimental, hardware testing pending.
+The optional controller is a separate APK. Pause saves a clip; resume starts a new one. Hide removes the overlay, not the recording notification. Toolbar-only exclusion from captured video is not implemented; hide the toolbar for clean clips. If a recording is active, stop before upgrading. Explicit stop: su -c "sh /data/adb/modules/lockrec_universal/action.sh stop".
