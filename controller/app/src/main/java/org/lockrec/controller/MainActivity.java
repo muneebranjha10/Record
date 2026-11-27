@@ -22,7 +22,7 @@ public class MainActivity extends Activity {
     CheckBox autoHide;
     AnimeSceneView scene;
     MorphRecordButton recordButton;
-    TextView captureStatus, elapsed;
+    TextView captureStatus, elapsed, qualitySummary;
     Button pauseAction, toolbarAction;
     LinearLayout settingsPanel; boolean settingsOpen=false, fpsChecking=false;
     String shownState="", shownMessage="";
@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
         if(("begin".equals(cmd)||"show".equals(cmd))&&!notifyAllowed()){Toast.makeText(this,"Allow notifications, then tap again.",Toast.LENGTH_LONG).show();return;}
         Intent i=new Intent(this,RecorderService.class).setAction(cmd);
         if("begin".equals(cmd)){i.putExtra("resolution",resolutions[resolution.getSelectedItemPosition()]);i.putExtra("fps",rates[fps.getSelectedItemPosition()]);i.putExtra("auto_hide",autoHide.isChecked());}
-        startForegroundService(i);
+        try{startForegroundService(i);}catch(RuntimeException e){applyState("error","Unable to open recorder. Check app permissions.");return;}
         if("begin".equals(cmd)||"end".equals(cmd)){waitUntil=android.os.SystemClock.elapsedRealtime()+1200;applyState("begin".equals(cmd)?"starting":"stopping","begin".equals(cmd)?"Preparing recorder…":"Saving video…");}
     }
     void applyState(String state,String message){
@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
             if(android.os.SystemClock.elapsedRealtime()<waitUntil&&(s.equals("idle")||s.equals("checking")))return;
             applyState(s,RecorderService.uiMessage);
         }else if(android.os.SystemClock.elapsedRealtime()>=waitUntil && !probing){
-            if(android.os.SystemClock.elapsedRealtime()-lastProbe>=2500)probe();
+            if(android.os.SystemClock.elapsedRealtime()-lastProbe>=5000)probe();
         }
     }
     void probe(){
@@ -94,6 +94,7 @@ public class MainActivity extends Activity {
             String value="error";
             try{
                 java.lang.Process p=new ProcessBuilder("su","-c","/system/bin/sh /data/adb/modules/lockrec_universal/action.sh status").redirectErrorStream(true).start();
+                if(!p.waitFor(15,java.util.concurrent.TimeUnit.SECONDS)){p.destroyForcibly();throw new java.io.IOException("Root status timed out");}
                 java.io.BufferedReader r=new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));String line;
                 while((line=r.readLine())!=null){if(line.trim().equals("Recording"))value="recording";else if(line.trim().equals("Idle"))value="idle";else if(line.trim().equals("Finalizing"))value="stopping";}
                 if(p.waitFor()!=0)value="error";
@@ -154,6 +155,7 @@ public class MainActivity extends Activity {
             boolean supported=false; String failure="";
             try{
                 java.lang.Process p=new ProcessBuilder("su","-c","/system/bin/sh /data/adb/modules/lockrec_universal/action.sh capabilities").redirectErrorStream(true).start();
+                if(!p.waitFor(15,java.util.concurrent.TimeUnit.SECONDS)){p.destroyForcibly();throw new java.io.IOException("Capability check timed out");}
                 java.io.BufferedReader reader=new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));
                 String line;while((line=reader.readLine())!=null){if(line.trim().equals("fps=selectable"))supported=true;}
                 if(p.waitFor()!=0)failure="Root/module unavailable. Install v0.8 and grant root.";
@@ -167,6 +169,7 @@ public class MainActivity extends Activity {
             });
         },"lockrec-capabilities").start();
     }
+    void updateSummary(){if(qualitySummary==null||resolution==null||fps==null)return;String r=resolutions[Math.max(0,resolution.getSelectedItemPosition())], f=rates[Math.max(0,Math.min(rates.length-1,fps.getSelectedItemPosition()))];qualitySummary.setText((r.equals("native")?"Native resolution":r+"p")+" · "+(f.equals("auto")?"Auto FPS":f+" FPS"));}
     void updateRates(){
         if(!manualFps||resolution==null||fps==null)return;
         android.util.DisplayMetrics m=new android.util.DisplayMetrics();getWindowManager().getDefaultDisplay().getRealMetrics(m);
@@ -205,6 +208,7 @@ public class MainActivity extends Activity {
         LinearLayout options=new LinearLayout(this);options.setOrientation(1);
         Button settingsToggle=button("Capture settings  ▾",0xff31264b,WHITE,()->{settingsOpen=!settingsOpen;settingsPanel.setVisibility(settingsOpen?android.view.View.VISIBLE:android.view.View.GONE);});
         add(panel,settingsToggle,12);
+        qualitySummary=label("Native resolution · Auto FPS",12,MUTED);add(panel,qualitySummary,6);
         settingsPanel=options;settingsPanel.setVisibility(android.view.View.GONE);add(panel,options,4);
         panel=options;
         android.util.DisplayMetrics dm=new android.util.DisplayMetrics();
@@ -219,15 +223,15 @@ public class MainActivity extends Activity {
         add(panel,label("Resolution",13,MUTED),20);
         resolution=spinner(rl);add(panel,resolution,4);int saved=java.util.Arrays.asList(resolutions).indexOf(getPreferences(0).getString("resolution","native"));resolution.setSelection(Math.max(0,saved));
         add(panel,label("Frame rate",13,MUTED),14);
-        fps=spinner(new String[]{"Auto · native engine"});fps.setEnabled(false);add(panel,fps,4);fps.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,android.view.View v,int pos,long id){if(manualFps&&pos<rates.length)getPreferences(0).edit().putString("fps",rates[pos]).apply();}public void onNothingSelected(android.widget.AdapterView<?> p){}});
-        resolution.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,android.view.View v,int pos,long id){getPreferences(0).edit().putString("resolution",resolutions[pos]).apply();updateRates();}public void onNothingSelected(android.widget.AdapterView<?> p){}});
+        fps=spinner(new String[]{"Auto · native engine"});fps.setEnabled(false);add(panel,fps,4);fps.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,android.view.View v,int pos,long id){if(manualFps&&pos<rates.length)getPreferences(0).edit().putString("fps",rates[pos]).apply();updateSummary();}public void onNothingSelected(android.widget.AdapterView<?> p){}});
+        resolution.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,android.view.View v,int pos,long id){getPreferences(0).edit().putString("resolution",resolutions[pos]).apply();updateRates();updateSummary();}public void onNothingSelected(android.widget.AdapterView<?> p){}});
         fpsNote=label("Checking recorder FPS support…",12,MUTED);add(panel,fpsNote,5);
         detectFps();
         autoHide=new CheckBox(this);autoHide.setText("Hide toolbar before recording");autoHide.setTextColor(WHITE);autoHide.setChecked(getPreferences(0).getBoolean("auto_hide",true));autoHide.setOnCheckedChangeListener((v,checked)->getPreferences(0).edit().putBoolean("auto_hide",checked).apply());add(panel,autoHide,10);
         add(root,label("Videos saved to Movies/LockRec",12,MUTED),16);
         add(root,label("Use the notification to pause or stop. Visible toolbar may appear in videos.",12,MUTED),7);
         add(root,button("Community · @s23_hype",0xd2362450,BLUE,this::openChannel),14);
-        setContentView(layers);
+        updateSummary();setContentView(layers);
         scene.setMotionEnabled(false);
     }
 }
